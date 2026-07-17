@@ -7,6 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.3/dist/svg2pdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
 <style>
   :root{
     --bg:#1E2E0D;--bg2:#2F4A18;--card:#FFFFFF;--surface:#EEF3E8;
@@ -3079,7 +3080,7 @@ function renderTree_Dir(){
   if(noRes)noRes.style.display=html?'none':'block';
   const vc=document.getElementById('visible-count-dir');
   const hasFilter=f.status.length>0||f.resp.length>0||f.search||f.dateStart||f.dateEnd;
-  if(vc)vc.textContent=hasFilter?`Filtrado: ${vg} eixos · ${vm} grupos`:'Exibindo todos — 9 eixos · 48 grupos';
+  if(vc)vc.textContent=hasFilter?`Filtrado: ${vg} eixos · ${vm} grupos`:`Exibindo todos — ${vg} eixos · ${vm} grupos`;
   const banner=document.getElementById('date-banner-dir');
   const bannerText=document.getElementById('date-banner-text-dir');
   if(f.dateStart||f.dateEnd){
@@ -3383,7 +3384,7 @@ function renderTree(){
   const rb=document.getElementById('root-badge');if(rb)rb.textContent=`${vg} eixos · ${vm} grupos`;
 
   const hasFilter=f.status.length>0||f.resp.length>0||f.search||f.dateStart||f.dateEnd;
-  document.getElementById('visible-count').textContent=hasFilter?`Filtrado: ${vg} eixos · ${vm} grupos`:'Exibindo todos — 9 eixos · 48 grupos';
+  document.getElementById('visible-count').textContent=hasFilter?`Filtrado: ${vg} eixos · ${vm} grupos`:`Exibindo todos — ${vg} eixos · ${vm} grupos`;
   const badge=document.getElementById('search-badge');
   if(badge)badge.textContent=hasFilter?`${vm} grupo${vm!==1?'s':''} encontrado${vm!==1?'s':''}`:'Todos os itens';
 
@@ -4929,7 +4930,9 @@ document.addEventListener('click',function(e){
 });
 
 // ── DYNAMIC SHEETS FETCH ─────────────────────────────────────────────────────
-const SHEETS_API_KEY   = 'AIzaSyCNImX3JgwMuoetVg69-ohC_Fdz5EdHzLY';
+// SHEETS_API_KEY removida (17/Jul/26): não é mais usada — dados vêm do xlsx local
+// (ver fetchSheet/_loadLocalWorkbook). Só volta a ser necessária na migração futura
+// para Google Sheets API (ver CLAUDE.md > Fontes de dados > Futuro).
 const CRONOGRAMA_ID    = '17nttJ_ShqWztvDWH3l59iNqboLqkviZs3_PM5J3ihdA';
 const CRONOGRAMA_SHEET = 'master data';
 const REQS_SHEET_ID    = '1azrdS4OGO-CWD1ods69i8iZJcwq4oyISdT2n_tu1uJM';
@@ -4937,26 +4940,64 @@ const REQS_SHEET_NAME  = 'Planilha de Status de Compras Prod';
 const AUTO_REFRESH_MS  = 15 * 60 * 1000; // 15 minutos
 let _refreshTimer = null;
 
+// Fase atual: dados vêm do xlsx local no repo (ver CLAUDE.md > Fontes de dados).
+// spreadsheetId é ignorado — mantido como parâmetro só para não quebrar quem chama
+// fetchSheet/fetchSheetColors. Quando migrar para Google Sheets API, reintroduzir o
+// fetch HTTP original aqui (histórico no git).
+// ⚠️ Se o arquivo xlsx for renomeado no repo, atualizar esta constante (e o
+// CLAUDE.md, seção "Fontes de dados") — senão o dashboard falha com erro claro
+// (HTTP 404 no fetch abaixo), mas não silenciosamente.
+const LOCAL_XLSX_FILE = 'MUP _ EAP - CRONOGRAMA_16Jul.xlsx';
+let _xlsxWorkbookPromise = null;
+function _loadLocalWorkbook() {
+  if (!_xlsxWorkbookPromise) {
+    _xlsxWorkbookPromise = fetch(LOCAL_XLSX_FILE)
+      .then(function(resp){
+        if (!resp.ok) throw new Error(`XLSX local: HTTP ${resp.status} ao carregar ${LOCAL_XLSX_FILE}`);
+        return resp.arrayBuffer();
+      })
+      .then(function(buf){
+        return XLSX.read(buf, {type:'array', cellStyles:true, cellDates:true});
+      })
+      .catch(function(err){ _xlsxWorkbookPromise = null; throw err; });
+  }
+  return _xlsxWorkbookPromise;
+}
+function _xlsxDateToISO(d) {
+  const y=d.getUTCFullYear(), m=String(d.getUTCMonth()+1).padStart(2,'0'), dd=String(d.getUTCDate()).padStart(2,'0');
+  return `${y}-${m}-${dd}`;
+}
 async function fetchSheet(spreadsheetId, sheetName) {
-  const encodedSheet = encodeURIComponent(sheetName);
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedSheet}!A1:CE2000?key=${SHEETS_API_KEY}`;
-  const resp = await fetch(url, {referrerPolicy:'origin'});
-  if (!resp.ok) throw new Error(`Sheets API: HTTP ${resp.status} — ${await resp.text()}`);
-  return (await resp.json()).values || [];
+  const wb = await _loadLocalWorkbook();
+  const ws = wb.Sheets[sheetName];
+  if (!ws) throw new Error(`Aba "${sheetName}" não encontrada em ${LOCAL_XLSX_FILE}`);
+  // raw:true preserva números/Dates nativos (evita o SheetJS formatar datas como M/D/YY,
+  // que _fmtDate não reconhece); Dates são convertidas manualmente para ISO abaixo.
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''});
+  return rows.map(function(row){
+    return row.map(function(v){ return (v instanceof Date) ? _xlsxDateToISO(v) : v; });
+  });
 }
 async function fetchSheetColors(spreadsheetId, sheetName, column) {
   const col=column||'E';
-  const enc=encodeURIComponent(sheetName);
-  const url=`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?ranges=${enc}!${col}1:${col}2000&fields=sheets.data.rowData.values.effectiveFormat.backgroundColor&key=${SHEETS_API_KEY}`;
-  const resp=await fetch(url,{referrerPolicy:'origin'});
-  if(!resp.ok) return [];
-  const data=await resp.json();
-  const rowData=((data.sheets||[])[0]||{}).data;
-  const rd=(rowData&&rowData[0]&&rowData[0].rowData)||[];
-  return rd.map(function(row){
-    const v=(row.values||[])[0];
-    return (v&&v.effectiveFormat&&v.effectiveFormat.backgroundColor)||null;
-  });
+  const wb = await _loadLocalWorkbook();
+  const ws = wb.Sheets[sheetName];
+  if (!ws || !ws['!ref']) return [];
+  const colIdx = XLSX.utils.decode_col(col);
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  const out = [];
+  for (let r=range.s.r; r<=range.e.r; r++) {
+    const cell = ws[XLSX.utils.encode_cell({r:r, c:colIdx})];
+    const argb = cell && cell.s && cell.s.fgColor && cell.s.fgColor.rgb;
+    if (!argb) { out.push(null); continue; }
+    const hex = argb.length===8 ? argb.slice(2) : argb;
+    out.push({
+      red: parseInt(hex.slice(0,2),16)/255,
+      green: parseInt(hex.slice(2,4),16)/255,
+      blue: parseInt(hex.slice(4,6),16)/255
+    });
+  }
+  return out;
 }
 
 function _sg(row, idx) {
@@ -4979,34 +5020,17 @@ function _worstStatus(statuses) {
 }
 
 function _findWeekCols(rows) {
-  // >>> TESTE TEMPORARIO (15/07) — forca colunas BC/BD (semana 'Atualizacao Qui, 09/07')
-  // pra validar a heuristica do Resumo Executivo com dados reais preenchidos. REMOVER esta
-  // linha de return antes de commitar — volta a detectar a semana mais recente automaticamente.
-  return {pC:54,eC:55,weekLabel:'Atualização Qui, 09/07'};
-  const h1=rows[0]||[], h2=rows[1]||[];
-  let baseCol=-1;
-  for(let i=h1.length-1;i>=0;i--) {
-    if(h1[i]&&h1[i].toUpperCase().replace(/Ç/g,'C').replace(/Ã/g,'A').includes('ATUALIZA')) { baseCol=i; break; }
-  }
-  if(baseCol>=0) {
-    const weekLabel=h1[baseCol].trim();
-    let pC=-1,eC=-1;
-    for(let i=baseCol;i<Math.min(baseCol+5,h2.length);i++) {
-      const h=(h2[i]||'').toUpperCase();
-      if(h.includes('PROGRESSO')&&pC<0) pC=i;
-      if(h.includes('ENCAMINHAMENTO')&&eC<0) eC=i;
-    }
-    if(pC>=0&&eC>=0) return {pC,eC,weekLabel};
-    return {pC:baseCol,eC:baseCol+1,weekLabel};
-  }
-  let eC=-1,pC=-1;
-  for(let i=h2.length-1;i>=0;i--) {
+  // Header da MUP é estático (linha 2: coluna O=Progresso, P=Encaminhamentos — sem
+  // colunas semanais como no MAZ). Detecta pela própria header row (linha 2 = rows[1]);
+  // cai para os índices fixos O/P se o texto do header mudar.
+  const h2=rows[1]||[];
+  let pC=-1,eC=-1;
+  for(let i=0;i<h2.length;i++) {
     const h=(h2[i]||'').toUpperCase();
+    if(h.includes('PROGRESSO')&&pC<0) pC=i;
     if(h.includes('ENCAMINHAMENTO')&&eC<0) eC=i;
-    else if(h.includes('PROGRESSO')&&pC<0&&eC>=0) pC=i;
-    if(pC>=0&&eC>=0) break;
   }
-  return (pC>=0&&eC>=0)?{pC,eC,weekLabel:''}:{pC:37,eC:39,weekLabel:''};
+  return (pC>=0&&eC>=0)?{pC,eC,weekLabel:''}:{pC:14,eC:15,weekLabel:''};
 }
 
 // Cor fixa dos eixos (decisão da diretoria — não vem mais da coluna B da planilha)
@@ -5018,7 +5042,15 @@ function _eixoTextColor(hex){
   return lum>0.6?'#1A2E0A':'#FFFFFF';
 }
 function _parseWBS(rows, rowColors) {
-  const CE=1,CG=2,CM=3,CT=4,CFO=5,CR=6,CS=7,CST=8,CEN=9;
+  const CE=1,CG=2,CM=3,CT=4,CFO=5,CR=6,CS=8,CST=9,CEN=10; // B..G iguais; H=Prioridade (nao lida ainda); I=Status,J=Inicio,K=Fim
+  // Checagem de sanidade: se a planilha for reordenada, avisa no console em vez de
+  // ler dado errado silenciosamente (ex: mostrar data no lugar de status).
+  const _hdr2=rows[1]||[];
+  const _hdrCheck=[[CS,'STATUS'],[CST,'INÍCIO'],[CEN,'FIM']];
+  _hdrCheck.forEach(function(pair){
+    const _h=(_hdr2[pair[0]]||'').toString().toUpperCase();
+    if(!_h.includes(pair[1])) console.warn(`_parseWBS: coluna ${pair[0]} esperava conter "${pair[1]}" mas o header é "${_hdr2[pair[0]]}" — planilha pode ter sido reordenada`);
+  });
   const {pC,eC,weekLabel}=_findWeekCols(rows);
   const eixoOrder=[],eixoMap={};
   const badRows=[];
