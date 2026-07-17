@@ -1,4 +1,4 @@
-# Guia de Onboarding — Dashboard MAZ 2026
+# Guia de Onboarding — Dashboard MUP
 > Documento para novos desenvolvedores/responsáveis pelo projeto.
 > Leia do início ao fim antes de fazer qualquer alteração.
 
@@ -12,40 +12,48 @@
 5. [Testar no celular pela rede local](#5-testar-no-celular-pela-rede-local)
 6. [Reverter para uma versão anterior](#6-reverter-para-uma-versão-anterior)
 7. [Referências técnicas](#7-referências-técnicas)
-8. [Skills disponíveis no repositório](#8-skills-disponíveis-no-repositório)
+8. [Skills disponíveis](#8-skills-disponíveis)
 9. [Armadilhas técnicas conhecidas](#9-armadilhas-técnicas-conhecidas)
+10. [Feature: Pauta N2](#10-feature-pauta-n2)
+11. [Feature: Aba Diretoria](#11-feature-aba-diretoria)
 
 ---
 
 ## 1. O que é este projeto
 
-Dashboard interativo do **Museu das Amazônias 2026 (MAZ ELD)** — acompanhamento de cronograma, status report e requisições de compras.
+Dashboard interativo do **Museu do Petróleo e Novas Energias (MUP)**, do **IDG — Instituto de Desenvolvimento e Gestão** — acompanhamento de cronograma, status report e requisições de compras, usado pela Diretoria de Projetos (PMO).
+
+> Este projeto foi derivado do `maz-dashboard` (cópia limpa, sem histórico). Arquitetura, CSS, JS e regras de negócio são herdados do MAZ — a diferença estrutural é a **fonte de dados** (ver abaixo).
 
 ### Arquitetura
-- **Um único arquivo HTML** é o projeto inteiro:
-  - `index.html` → versão desktop e mobile (responsiva, ≤768px), inclui as abas Diretoria (Gantt Diretoria, Status Report Diretoria, Comparativo de Status)
-  - `mobile.html` foi removido em 01/07/2026 — a pedido do Sergio, o mobile dedicado saiu de linha e agora todo acesso (celular ou desktop) usa o `index.html`
-- **Dados ao vivo** — buscados direto do Google Sheets via API Key no browser, sem backend
-- **Publicado** em `https://pmo-creator.github.io/maz-dashboard/` via GitHub Pages
+- **Um único arquivo HTML** é o projeto inteiro: `index.html` → desktop e mobile no mesmo arquivo (responsivo, ≤768px)
+- **Fase atual: dados vêm de um arquivo `.xlsx` local no próprio repositório** — lido no browser via SheetJS, sem backend (ver seção 7)
+- **Publicado (previsto)** em `https://pmo-creator.github.io/mup-dashboard/` via GitHub Pages
+  - ⚠️ O repositório **já é público**, mas a **GitHub Page ainda não foi ativada** (Settings → Pages → branch `main`) — a URL acima não está no ar ainda
 - **Dependências externas (CDN):**
   - Chart.js 4.5.1 — gráficos de KPI
   - jsPDF 2.5.1 + svg2pdf.js 2.2.3 — export PDF
+  - SheetJS (xlsx) 0.18.5, com SRI — leitura do cronograma local
 
 ### Como os dados chegam
 ```
-Google Sheets (Cronograma + REQS)
-        ↓  API Key (sem OAuth)
+MUP _ EAP - CRONOGRAMA_16Jul.xlsx  (arquivo no repositório)
+        ↓  fetch + parse via SheetJS (tudo no browser, sem backend)
     Browser do usuário
         ↓  renderiza
     Dashboard (index.html — desktop e mobile no mesmo arquivo)
 ```
 
+> **Futuro:** migração para **Google Sheets API**, mantendo a mesma estrutura de abas/colunas (ver seção 7 — os IDs de planilha já estão preservados no código, hoje sem uso).
+
 ### Indicador de status (canto superior direito)
 | Indicador | Significado |
 |---|---|
-| 🟢 Ao vivo · HH:MM | Tudo funcionando, dados frescos |
-| 🟡 Cronograma OK · REQ erro | Cronograma OK mas REQS falhou |
-| 🔴 Erro — dados locais | Fetch falhou, mostrando dados antigos |
+| 🟢 Ao vivo · HH:MM | Xlsx local lido com sucesso, dados atualizados na tela |
+| 🟡 Cronograma OK · REQ erro | Cronograma OK, mas a aba de Requisições não foi encontrada (esperado — Requisições está **on hold**, ver seção 7) |
+| 🔴 Erro — dados locais | Falha ao buscar/ler o xlsx, mostrando dados antigos |
+
+> O texto "Ao vivo" é herdado do MAZ (onde de fato buscava do Google Sheets a cada refresh). Hoje, no MUP, significa "leu o arquivo xlsx local com sucesso" — não há conexão de rede com uma fonte externa nesta fase.
 
 ---
 
@@ -56,18 +64,14 @@ Google Sheets (Cronograma + REQS)
 | Tipo de tarefa | Melhor ferramenta | Por quê |
 |---|---|---|
 | Editar arquivos HTML/CSS/JS | **Claude Code** | Acessa e edita arquivos diretamente |
-| Git commit / push | **Claude Code** | Roda bash/git |
+| Git commit / push | **Claude Code** (ou terminal, se o hook de auditoria travar — ver seção 9) | Roda bash/git |
 | Debug de código em arquivos | **Claude Code** | Lê o arquivo real, não uma cópia |
-| Perguntas sobre o projeto | **Chat ou Cowork** | Não precisa de ferramentas, menos tokens |
-| Explicações gerais de tecnologia | **Chat** | Puramente conversacional |
-| Brainstorm / planejamento de features | **Chat ou Cowork** | Sem necessidade de arquivos |
-| Criar documentos Word/PDF/PPT | **Cowork** | Skills especializados |
-| Análise de dados / planilhas | **Cowork** | Skills de data analysis |
+| Perguntas sobre o projeto | **Chat** | Não precisa de ferramentas, menos tokens |
+| Análise de dados / planilhas | **Cowork** | Skills especializados |
 
 **Regra geral:**
 - 🔧 **Claude Code** → quando precisa **tocar em arquivos** ou **rodar comandos**
 - 💬 **Chat** → quando é só **pergunta, explicação ou texto**
-- 🤝 **Cowork** → quando precisa de **skills especializados**
 
 ### Sempre fazer
 - ✅ Testar local antes de qualquer push
@@ -76,21 +80,22 @@ Google Sheets (Cronograma + REQS)
 - ✅ Um commit por alteração com descrição clara do que foi feito
 - ✅ Testar no celular também antes de publicar (redimensione o browser para ≤768px ou abra direto no celular — é o mesmo `index.html`)
 - ✅ Validar JavaScript com `node --check` após qualquer alteração no código. Extrair o bloco script para um arquivo `.js` temporário e rodar: `node --check arquivo.js`
-- ✅ Ao criar ou alterar o filtro de responsável, verificar os **3 estados**: (a) todos marcados → cronograma completo, (b) alguns marcados → mostra só os responsáveis selecionados, (c) nenhum marcado → conteúdo some e aparece mensagem de aviso verde
+- ✅ Trabalhar sempre na sua branch pessoal (`marcela` ou `joao`), nunca direto na `main`
 
 ### Nunca fazer
 - ❌ Editar direto no GitHub pelo browser (vai direto para produção sem teste)
+- ❌ Dar push direto na branch `main` — mudanças entram via Pull Request revisado pelo owner (ver seção 4)
 - ❌ Confiar só no botão "Atualizar" do dashboard — ele re-executa o JS em cache, não baixa HTML novo
 - ❌ Publicar sem testar no celular também
 - ❌ Push sem mensagem de commit descritiva
-- ❌ Fazer `git push --force` na branch main
+- ❌ Fazer `git push --force` na `main` (a branch protection bloqueia isso de qualquer forma — ver seção 6)
 
 ### Boas práticas adicionais recomendadas
-- 📌 **Sempre descreva o commit em português** com o que foi alterado e por quê (ex: `"Corrigir nome da aba REQS: 'Compras P' → 'Compras Prod'"`)
-- 📌 **Nunca altere as constantes de API Key ou IDs de planilha** sem confirmar com o responsável do projeto
-- 📌 **Se o indicador mostrar 🔴**, não é bug do dashboard — é problema de conectividade com o Sheets. Verifique compartilhamento da planilha e API Key
-- 📌 **Qualquer mudança na estrutura das colunas das planilhas** exige atualização do código de parse (`_parseWBS` e `_parseREQS`)
-- 📌 **Ao testar no celular**, use sempre o link do GitHub Pages (`pmo-creator.github.io/maz-dashboard`) ou o layout responsivo local — não existe mais redirecionamento, é o mesmo `index.html` em qualquer tela
+- 📌 **Sempre descreva o commit em português** com o que foi alterado e por quê
+- 📌 **Não há mais API Key hardcoded no código** (removida Jul/2026 — dados vêm do xlsx local). Se for trocar o nome do arquivo xlsx, atualizar a constante `LOCAL_XLSX_FILE` em `index.html` **e** o `CLAUDE.md` (seção "Fontes de dados")
+- 📌 **Se o indicador mostrar 🔴**, verifique: (a) o arquivo xlsx está mesmo no repo com o nome exato esperado, (b) abra o DevTools (F12) → aba Network → confira se o fetch do `.xlsx` retornou 200
+- 📌 **Qualquer mudança na estrutura das colunas do xlsx** (inserir/mover coluna) exige atualização do código de parse (`_parseWBS` — ver seção 7) — o código faz uma checagem de sanidade no console (`console.warn`), mas não impede dado errado silenciosamente se o aviso for ignorado
+- 📌 **A `main` tem branch protection ativa de verdade** (1 aprovação obrigatória, Code Owner = `@PMO-creator`) — todo PR precisa de revisão antes do merge
 
 ---
 
@@ -117,50 +122,57 @@ O projeto usa **uma única pasta** — edição, teste e publicação acontecem 
 
 ```
 GitHub\
-  maz-dashboard\                 ← PASTA ÚNICA — edita, testa e publica daqui
-    index.html                   → Dashboard único, desktop e mobile (~330 KB) — mobile.html removido em 01/Jul/2026
-    SERVE_DASHBOARD.bat          → Servidor local (duplo-clique para preview)
-    ONBOARDING.md                ← este arquivo (leia antes de trabalhar)
+  mup-dashboard\                            ← PASTA ÚNICA — edita, testa e publica daqui
+    index.html                              → Dashboard único, desktop e mobile (~430 KB)
+    MUP _ EAP - CRONOGRAMA_16Jul.xlsx        → Cronograma de origem (fonte de dados atual)
+    SERVE_DASHBOARD.bat                     → Servidor local (duplo-clique para preview)
+    ONBOARDING.md                            ← este arquivo (leia antes de trabalhar)
     CLAUDE.md
-    doc-sync\                    ← skill doc-sync + contexto + snapshot
-    Manual\                      ← documentação versionada (docx/pdf)
-    00. Apoio\                   ← logos e banners
+    .github/CODEOWNERS                       → define quem revisa PRs
+    .claude/                                 → configs locais do Claude Code (não afeta o dashboard)
 ```
 
-> A separação anterior em duas pastas foi eliminada em 26/Mai/2026. Tudo acontece diretamente em `maz-dashboard`; o servidor local (`SERVE_DASHBOARD.bat`) permite testar antes de commitar sem risco de publicação acidental.
+> ⚠️ **Não usar OneDrive** para esta pasta — o OneDrive corrompe a pasta `.git` ao sincronizar arquivos internos do git. Use um caminho local puro, ex: `C:\Users\<usuário>\GitHub\mup-dashboard`.
 
 ### Clonar o repositório (primeira vez)
 ```bash
-git clone https://github.com/PMO-creator/maz-dashboard
+git clone https://github.com/PMO-creator/mup-dashboard
 ```
 
-Você terá a pasta `maz-dashboard/` com tudo que precisa. Não há pasta de ambiente de teste separada — o servidor local (`SERVE_DASHBOARD.bat`) já cumpre esse papel dentro da própria pasta.
+Você terá a pasta `mup-dashboard/` com tudo que precisa. O servidor local (`SERVE_DASHBOARD.bat`) cumpre o papel de ambiente de teste dentro da própria pasta.
 
 ### Configurar acesso ao GitHub
-O responsável anterior precisa te adicionar como colaborador:
-- `github.com/PMO-creator/maz-dashboard` → Settings → Collaborators → Add people
+O owner (`@PMO-creator`) precisa te adicionar como colaborador:
+- `github.com/PMO-creator/mup-dashboard` → Settings → Collaborators → Add people
+
+> No momento, `marcela` e `joao` existem como **branches** no repositório, mas as pessoas ainda não foram adicionadas como colaboradoras — sem acesso de escrita, não conseguem dar push nas próprias branches. Confirmar/pedir o convite antes de tentar clonar+editar.
+
+### Branches do projeto
+- `main` → produção, protegida (1 aprovação obrigatória via PR, Code Owner = `@PMO-creator`)
+- `marcela`, `joao` → branches pessoais de trabalho
+- Não existe branch `dev` neste repo (diferente do MAZ)
 
 ---
 
 ## 4. Fluxo de trabalho — do teste ao ar
 
 ```
-maz-dashboard  →  (edita + testa aqui mesmo)  →  commit/push  →  GitHub Pages
-  (pasta única)                                                     (produção)
+sua branch (marcela/joao)  →  edita + testa localmente  →  commit/push na sua branch
+        →  Pull Request  →  revisão do owner  →  merge na main  →  GitHub Pages (quando ativado)
 ```
 
-### Passo 0 — Puxar a versão mais recente
-
-Antes de começar, garantir que a pasta local está atualizada:
+### Passo 0 — Sincronizar antes de começar
 
 ```bash
-# No terminal, dentro de maz-dashboard:
+# Na pasta mup-dashboard:
+git switch <sua-branch>      # marcela ou joao
 git pull
+git merge main                # traz o que entrou na main desde a última vez
 ```
 
 ### Passo 1 — Subir o servidor local
 
-Na pasta `maz-dashboard`, rodar:
+Na pasta `mup-dashboard`, rodar:
 ```
 SERVE_DASHBOARD.bat
 ```
@@ -173,32 +185,38 @@ python -m http.server 8000
 
 ### Passo 2 — Fazer as alterações
 
-Edite `index.html` com **Claude Code** (abrir o Claude Code na pasta `maz-dashboard`).
+Edite `index.html` com **Claude Code** (abrir o Claude Code na pasta `mup-dashboard`).
 
 ### Passo 3 — Testar localmente
 
 ```
 Desktop → http://localhost:8000/index.html
-Mobile  → redimensione o browser para ≤768px, ou abra o mesmo link no celular
-Celular → http://[SEU-IP]:8000/index.html  (ver seção 5)
+Mobile  → redimensione o browser para ≤768px, ou abra o mesmo link no celular (ver seção 5)
 ```
 
 - Fazer **hard refresh** (`Ctrl+Shift+R`) a cada alteração
 - Verificar o indicador 🟢 Ao vivo
 - Testar as funcionalidades afetadas pela mudança
 
-### Passo 4 — Publicar (só quando aprovado)
+### Passo 4 — Subir a branch e abrir o Pull Request
 
 ```bash
-# No terminal, dentro de maz-dashboard:
 git add index.html
 git commit -m "Descrição clara do que foi alterado"
-git push
+git push -u origin <sua-branch>
 ```
 
-Aguardar **~2 minutos** → `https://pmo-creator.github.io/maz-dashboard/` atualizado.
+Depois, abrir o Pull Request pedindo revisão do owner:
+```bash
+gh pr create --base main --title "Título curto" --body "O que mudou e por quê"
+```
+Ou pela interface do GitHub (o próprio `git push` mostra o link direto no terminal).
 
-Fazer **hard refresh** no GitHub Pages para confirmar (`Ctrl+Shift+R`).
+> ⚠️ A `main` tem **branch protection ativa**: todo PR precisa de **1 aprovação** de um Code Owner antes de poder ser mergeado — o GitHub bloqueia o botão "Merge" até isso acontecer. O autor do PR **não pode aprovar o próprio PR**. Se você for o único colaborador com acesso (situação comum no início do projeto), avise o owner — ele pode ajustar a proteção (`enforce_admins`) para conseguir mergear PRs próprios sem travar, mantendo a exigência de revisão para PRs de terceiros.
+
+### Passo 5 — Publicação
+
+Só depois do merge na `main` é que a mudança vai para o GitHub Pages **quando a Page estiver ativada** (hoje ainda não está — ver seção 1). Aguardar **~2 minutos** após o merge e fazer hard refresh na URL pública para confirmar.
 
 ---
 
@@ -222,7 +240,7 @@ No browser do celular digitar:
 ```
 http://192.168.1.105:8000/index.html
 ```
-A página é a mesma — o layout se adapta automaticamente ao tamanho da tela (responsivo). Não existe mais redirect para arquivo mobile separado.
+A página é a mesma — o layout se adapta automaticamente ao tamanho da tela (responsivo).
 
 > 💡 O IP pode mudar quando a rede muda. Sempre verifique com `ipconfig` antes de testar.
 
@@ -241,6 +259,7 @@ Cria um novo commit que desfaz as mudanças. Histórico fica intacto.
 git revert <hash-do-commit>
 git push
 ```
+> Se o commit já estiver na `main`, seguir o fluxo normal de branch + PR (seção 4) para reverter — a `main` protegida não aceita push direto do revert também.
 
 ### Opção B — Ver como o arquivo estava em uma versão antiga
 ```bash
@@ -254,10 +273,10 @@ Abre `versao_antiga.html` para comparar ou copiar trechos.
 git reset --hard <hash>
 git push --force
 ```
-> Só usar em último caso. Avisar o responsável antes.
+> Só usar em último caso, e só numa **branch pessoal** — a `main` bloqueia force-push no nível do GitHub (branch protection: `allow_force_pushes: false`), então esse comando nem funciona lá. Avisar o responsável antes de usar em qualquer branch.
 
 ### Pelo GitHub (interface visual)
-1. Acessar `github.com/PMO-creator/maz-dashboard`
+1. Acessar `github.com/PMO-creator/mup-dashboard`
 2. Clicar na aba **"Commits"**
 3. Encontrar o commit desejado → clicar em **"<>"** (Browse files)
 4. Baixar o arquivo da versão antiga manualmente
@@ -269,41 +288,54 @@ git push --force
 ### URLs
 | Recurso | URL |
 |---|---|
-| Dashboard público | `https://pmo-creator.github.io/maz-dashboard/` |
-| Repositório GitHub | `https://github.com/PMO-creator/maz-dashboard` |
-| Teste local | `http://localhost:8765/index.html` (mesma URL para desktop e mobile — responsivo) |
+| Dashboard público | `https://pmo-creator.github.io/mup-dashboard/` (GitHub Pages ainda não ativado) |
+| Repositório GitHub | `https://github.com/PMO-creator/mup-dashboard` |
+| Teste local | `http://localhost:8000/index.html` (mesma URL para desktop e mobile — responsivo) |
 
-### Google Sheets
+### Fonte de dados (fase atual — xlsx local)
+
+| Arquivo | Aba | Observação |
+|---|---|---|
+| `MUP _ EAP - CRONOGRAMA_16Jul.xlsx` | `master data` | Cabeçalho real na **linha 2** (linha 1 tem só "BASELINE") |
+
+Lido inteiramente no browser via **SheetJS** (`xlsx@0.18.5`, CDN com SRI) — sem API key, sem backend. Funções relevantes em `index.html`: `_loadLocalWorkbook()`, `fetchSheet()`, `fetchSheetColors()` (lê cor de célula da coluna E para diferenciar linha-tarefa de linha-cabeçalho).
+
+> ⚠️ O repositório é **público** — qualquer pessoa consegue baixar o xlsx com dados reais do cronograma. Se isso não for aceitável, tornar o repo privado ou trocar por uma versão com dados fictícios.
+
+**Futuro — migração para Google Sheets API:** mesma estrutura de abas/colunas se mantém. IDs preservados no código (hoje sem uso, os parâmetros `spreadsheetId` são ignorados pelas funções):
+
 | Planilha | ID | Aba |
 |---|---|---|
 | Cronograma | `17nttJ_ShqWztvDWH3l59iNqboLqkviZs3_PM5J3ihdA` | `master data` |
 | Requisições | `1azrdS4OGO-CWD1ods69i8iZJcwq4oyISdT2n_tu1uJM` | `Planilha de Status de Compras Prod` |
 
-> ⚠️ Ambas as planilhas precisam estar com **"Qualquer pessoa com o link pode ver"** ativado. Sem isso o dashboard retorna erro 403/400.
+> A `SHEETS_API_KEY` foi **removida** do código (Jul/2026 — era código morto, credencial exposta sem uso num repo público). Só volta a ser necessária nessa migração futura.
 
-### API Key Google Sheets
-- Chave: `[solicitar ao responsável]`
-- Projeto GCP: `maz-dashboard-495414`
-- Restrição: `pmo-creator.github.io/*`
-- Gerenciar em: `console.cloud.google.com` → APIs e serviços → Credenciais
+### Colunas do cronograma (`_parseWBS`, índices 0-based)
 
-### Colunas das planilhas (índices 0-based)
-
-**Cronograma (`_parseWBS`):**
 | Coluna | Índice | Campo |
 |---|---|---|
 | B | 1 | Eixo |
 | C | 2 | Grupo |
-| D | 3 | Marco |
+| D | 3 | Marco \ Entrega |
 | E | 4 | Tarefa |
+| F | 5 | Fornecedor |
 | G | 6 | Responsável |
-| H | 7 | Status |
-| I | 8 | Data início |
-| J | 9 | Data fim |
+| H | 7 | Prioridade (existe na planilha, ainda não é lida pelo código) |
+| I | 8 | Status |
+| J | 9 | Data início |
+| K | 10 | Data fim |
+| L | 11 | Duração (não lida) |
+| M | 12 | Predecessores (não lida) |
+| O | 14 | Progresso |
+| P | 15 | Encaminhamentos |
+| R em diante | 17+ | Áreas (Foyer, Área 0...Áreas Comuns) — detectadas **dinamicamente** pelo texto "FOYER" no header, não por índice fixo (`_detectAreaCols`) |
 
-**Requisições (`_parseREQS`):**
+> ⚠️ **Diferente do MAZ:** a coluna H (Prioridade) empurra Status/Início/Fim uma posição à frente — I/J/K em vez de H/I/J. Se `_parseWBS` for mexido de novo, conferir sempre contra o header real (`grep -n "function _parseWBS" index.html`) antes de confiar nesta tabela — o código já tem um `console.warn` de checagem de sanidade que avisa se o header não bater.
 
-> ⚠️ Atualizado Jul/2026 — tabela anterior estava com colunas deslocadas em relação ao código atual. Conferir sempre contra `_parseREQS` em `index.html` (`grep -n "function _parseREQS" index.html`) antes de confiar nesta tabela.
+### Colunas das Requisições (`_parseREQS`)
+
+> 🔶 **Requisições está em on hold** — a aba/feature segue no código (herdada do MAZ), mas fica dormente até existir uma fonte de dados de compras real para o MUP. A tabela abaixo é referência para quando essa fonte for definida.
 
 | Coluna | Índice | Campo |
 |---|---|---|
@@ -324,8 +356,6 @@ git push --force
 
 ### Regras de auto-status
 
-> Atualizado em commit 2ea1b35 — ranking e regras de default revisados.
-
 | Condição | Status resultante |
 |---|---|
 | Subtask sem status + sem data | `Definir datas` |
@@ -340,7 +370,7 @@ git push --force
 Atrasado(0) > Risco de atraso(1) > Em andamento(2) > Definir datas(3) > A iniciar(4) > Feito(5) > Cancelado/Congelado(6)
 ```
 
-**Cálculo automático de datas** (commit 8080c50):
+**Cálculo automático de datas:**
 - Marco: início = mínimo das subtasks · fim = máximo das subtasks
 - Grupo: início = mínimo dos marcos · fim = máximo dos marcos
 - Marcos sem subtasks mantêm as datas da planilha
@@ -348,22 +378,22 @@ Atrasado(0) > Risco de atraso(1) > Em andamento(2) > Definir datas(3) > A inicia
 Rollup: **marco = pior status das tarefas / grupo = pior status dos marcos / eixo = pior status dos grupos**
 
 ### Auto-refresh
-15 minutos — constante `AUTO_REFRESH_MS` em ambos os HTMLs.
+15 minutos — constante `AUTO_REFRESH_MS`. Com a fonte de dados sendo um xlsx local estático, o auto-refresh hoje só relê o **mesmo arquivo** — só reflete algo novo se alguém trocar o arquivo no repo e a página recarregar depois disso.
 
 ### Filtros do Dashboard
 
-Os filtros globais (Status, Eixo, Data e Responsável) ficam na barra superior de `index.html`, que se adapta automaticamente para telas menores (chips/dropdowns responsivos). Todos alimentam a função `applyFilter()` que re-renderiza a árvore EAP e o Gantt.
+Os filtros globais (Status, Eixo, Data e Responsável) ficam na barra superior de `index.html`, que se adapta automaticamente para telas menores. Todos alimentam a função `applyFilter()` que re-renderiza a árvore EAP e o Gantt.
 
-#### Filtro de Fornecedor — Aba Requisições (commit b4a0b53)
+#### Filtro de Fornecedor — Aba Requisições
 
-Dropdown multi-select na barra de filtros da aba Requisições. Lê valores únicos da coluna G (Fornecedor). Itens sem fornecedor agrupados como "Sem Fornecedor". Botão verde **"Limpar filtros"** reseta status, fornecedor, comprador, prioridade e busca.
+> 🔶 Dormente junto com a aba Requisições (ver "on hold" acima) — código intacto, sem dado pra filtrar hoje.
 
 | Função JS | Responsabilidade |
 |---|---|
 | `buildReqFilters()` | Monta os filtros de status, comprador, prioridade e fornecedor |
 | `applyReqFilter()` | Aplica todos os filtros e re-renderiza a lista de requisições |
 
-#### Aba Gantt Diretoria (Jun/2026)
+#### Aba Gantt Diretoria
 
 Aba `📊 Gantt Diretoria`, visualmente idêntica à aba Gantt, mas com regra de status diferente: usa o status **exatamente como preenchido na planilha**, sem os overrides automáticos por data que a aba Gantt aplica.
 
@@ -378,7 +408,7 @@ Aba `📊 Gantt Diretoria`, visualmente idêntica à aba Gantt, mas com regra de
 | Rollup marco/grupo/eixo (pior status) | sim | sim (mantido) |
 | `Feito`/`Cancelado`/`Cancelado/Congelado` nunca sobrescreve | sim | sim (mantido) |
 
-**Fonte de dados:** `WBS_DIR` (deep copy de `WBS`) + `preprocessStatusesDiretoria()` — ambos já existiam no projeto, criados para a aba "Status Report Diretoria". A aba Gantt Diretoria reaproveita essa mesma fonte.
+**Fonte de dados:** `WBS_DIR` (deep copy de `WBS`) + `preprocessStatusesDiretoria()`.
 
 **Implementação:** duplicação independente de toda a cadeia de funções do Gantt, sufixadas `Dir`, para não alterar a aba Gantt original:
 
@@ -396,28 +426,26 @@ Aba `📊 Gantt Diretoria`, visualmente idêntica à aba Gantt, mas com regra de
 
 IDs de DOM têm o sufixo/infixo `dir`: `gantt-dir-container`, `gbody-dir-{gi}`, `gchev-dir-{gi}`, `gantt-svg-dir-{gi}`, `btn-mode-dir-mensal`, `btn-mode-dir-semanal`.
 
-A função `expandLevel(section, level)` ganhou o branch `section==='gantt-dir'` para o dropdown VISUALIZAÇÃO da nova aba.
-
 Os mesmos filtros globais (responsável, status, período) e a mesma trava de senha da aba Status Report (`sessionStorage` `eap_unlocked`) se aplicam à Gantt Diretoria — `switchTab()` exige desbloqueio para `name==='eap'||name==='eap-dir'`.
 
 > ⚠️ A aba Gantt original (`WBS`, `preprocessStatuses()`, funções sem sufixo `Dir`) não foi alterada.
 
-#### Aba Áreas — Gantt e Export PDF (Jun/2026)
+#### Aba Áreas — Gantt e Export PDF
 
-A aba Áreas exibe o Gantt por área física do museu. As colunas de área são detectadas dinamicamente a partir do header da planilha.
+A aba Áreas exibe o Gantt por área física do museu. As colunas de área são detectadas dinamicamente a partir do header da planilha (ver `_detectAreaCols` acima).
 
 | Função JS | Responsabilidade |
 |---|---|
-| `_detectAreaCols(rows)` | Detecta os índices das colunas de área no Sheets usando a coluna FOYER como âncora. Chamada no init após `loadSheetsData`. Antes usava índices fixos — agora é dinâmico. |
-| `_buildGanttSVGForExport(ai, fDS, fDE, viewMode, fmt)` | Gera SVG do Gantt de uma área para export PDF. Parâmetro `fmt` (A1/A2/A3/A4) controla escala — adicionado Jun/2026. |
+| `_detectAreaCols(rows)` | Detecta os índices das colunas de área usando a coluna FOYER como âncora. Chamada no init após `loadSheetsData`. |
+| `_buildGanttSVGForExport(ai, fDS, fDE, viewMode, fmt)` | Gera SVG do Gantt de uma área para export PDF. Parâmetro `fmt` (A1/A2/A3/A4) controla escala. |
 | `pdfSelAll()` | Seleciona todas as áreas no wizard de Export PDF. |
 | `pdfSelClear()` | Limpa a seleção de áreas no wizard de Export PDF. |
 
-**Multi-select no Export PDF de Áreas (Jun/2026):** o wizard agora permite selecionar múltiplas áreas. O PDF gerado contém todas em sequência. Arquivo nomeado `Gantt_multiplas_areas_N_[período].pdf` quando > 1 área selecionada.
+**Multi-select no Export PDF de Áreas:** o wizard permite selecionar múltiplas áreas. O PDF gerado contém todas em sequência. Arquivo nomeado `Gantt_multiplas_areas_N_[período].pdf` quando > 1 área selecionada.
 
-#### Feature: Exportar Pauta N2 como HTML navegável (nome da função mantido por compatibilidade)
+#### Exportar Pauta N2 como HTML navegável (nome da função mantido por compatibilidade)
 
-Botão **📊 Exportar PPT** aparece junto com o FAB da Pauta N2 quando há marcos selecionados. Apesar do nome do botão/função, gera um `.html` navegável (não `.pptx`) — a troca de formato não renomeou a função para evitar quebrar referências existentes.
+Botão **📊 Exportar PPT** aparece junto com o FAB da Pauta N2 quando há marcos selecionados. Apesar do nome do botão/função, gera um `.html` navegável (não `.pptx`) — não há dependência de biblioteca externa de PPT no código atual.
 
 | Elemento | Detalhe |
 |---|---|
@@ -429,8 +457,6 @@ Botão **📊 Exportar PPT** aparece junto com o FAB da Pauta N2 quando há marc
 ---
 
 #### Filtro de Responsável (`index.html`, responsivo)
-
-Comportamento único — não há mais implementação mobile separada (`buildRespFilterMobile`, `grupoHasRespM`, `toggleRespChip` e afins foram removidas do código junto com o `mobile.html` em 01/07/2026; confirmado via grep, zero ocorrências em `index.html`).
 
 Localização no HTML: `<div class="ms-resp-wrap">` na barra de filtros, entre o filtro de Eixos e o botão "Limpar Filtros". O dropdown se adapta visualmente em telas pequenas, mas usa o mesmo dropdown multi-select e as mesmas funções em qualquer tamanho de tela.
 
@@ -456,28 +482,15 @@ Localização no HTML: `<div class="ms-resp-wrap">` na barra de filtros, entre o
 
 ---
 
-## 8. Skills disponíveis no repositório
+## 8. Skills disponíveis
 
-Cada skill vive na sua própria pasta na raiz do repo, com o bundle `.skill` junto.
+### code_audit — Auditor de código (skill global do Claude Code)
 
-### doc-sync — Sincronização de documentação (Cowork)
+Analisa o `git diff` atual (ou o `index.html` completo, sob pedido) em busca de problemas de segurança, arquitetura, qualidade de código e dependências externas. É uma **skill global** (`~/.claude/skills/code_audit`, não uma pasta dentro deste repo) — acionada digitando em linguagem natural algo como `"audita o que mudou"` antes de um commit/push.
 
-Compara o `index.html` atual com o snapshot anterior, identifica mudanças relevantes e atualiza automaticamente os manuais (Manual de Uso, Guia de Onboarding, Ficha Técnica, ONBOARDING.md). Roda via **Cowork** com a pasta `maz-dashboard` montada.
+> ⚠️ Há um hook global (`~/.claude/settings.json`) que tenta forçar essa pergunta automaticamente antes de qualquer `git commit`/`git push` via Claude Code. Ele é do tipo `"prompt"` e **não recebe confirmação do chat** — reavalia o comando puro a cada tentativa e pode bloquear mesmo depois de você já ter confirmado. Se isso acontecer, rode o `git commit`/`git push` direto no terminal (fora do Claude Code) — não é um bypass de segurança, é uma limitação conhecida desse tipo de hook.
 
-**Como instalar:** abrir `doc-sync/doc-sync.skill` no Cowork e clicar em "Save skill".  
-**Como acionar:** digitar `doc-sync` ou `"atualizar docs"` no chat Cowork.  
-**Documentação completa:** `doc-sync/SKILL.md`
-
-### code-audit — Auditor de código (Claude Code)
-
-Analisa `index.html` completo em busca de problemas de segurança, arquitetura, qualidade de código, armadilhas JavaScript e dependências externas. Roda via **Claude Code** (terminal) com a pasta `maz-dashboard` aberta.
-
-**Como instalar:** abrir `code-audit/code-audit.skill` no Claude Code e instalar.
-
-| O que digitar | Modo |
-|---|---|
-| `"audita o que mudou"` | Só o `git diff` atual — rápido |
-| `"auditoria completa"` | Lê `index.html` inteiro |
+> Não existem mais as skills `doc-sync` nem uma pasta `code-audit/` dentro do repositório — eram específicas do MAZ e foram removidas do MUP (ver `CLAUDE.md`).
 
 ---
 
@@ -488,15 +501,17 @@ Analisa `index.html` completo em busca de problemas de segurança, arquitetura, 
 | Dashboard branco sem erro no console | Verificar: (a) null bytes no HTML, (b) palavra `function` ausente em declaração JS, (c) JS truncado sem `</script>`, (d) template literals aninhados |
 | Template literals aninhados | Nunca usar crase dentro de `${}` dentro de outro crase — `node --check` passa mas browser quebra |
 | JS truncado | Verificar se `</script>` existe no final do arquivo antes de editar |
-| Prioridade REQS | Usar APENAS coluna D (índice 3) — coluna B gera falsos positivos. Índices antigos (E/4) causavam KPIs zerados (corrigido commit 7662590) |
+| Prioridade REQS (dormente) | Usar APENAS coluna D (índice 3) — coluna B gera falsos positivos. Relevante só quando Requisições sair do on hold |
 | `node --check` no Node v22 | Não aceita `.html` — extrair bloco script para arquivo `.js` temporário |
-| Edit tool do Claude Code falha | Arquivo contém backticks JS (template literals). Usar PowerShell com `[System.IO.File]::ReadAllBytes` |
-| String não encontrada no Replace | Arquivo usa CRLF. Normalizar: `$content.Replace("\`r\`n", "\`n")` antes de substituir |
-| Nome "Pingueira" na Área 0 | Nome correto é **"Pinguela"** — corrigido em commit 2970ecd. Usar sempre "Pinguela" em código e docs. |
-| `exportN2PPT()` sem pptxgenjs | Se `PptxGenJS` não estiver definido (falha de CDN), a função alerta o usuário e retorna. Nunca presumir que o CDN carregou. |
-| `preprocessStatusesDiretoria()` vs `preprocessStatuses()` | São duas funções separadas que processam fontes separadas (`WBS_DIR` vs `WBS`). Editar uma sem editar a outra causa divergência silenciosa entre a aba Status Report normal e a aba Diretoria. Ambas são chamadas em sequência no load (`preprocessStatuses(); preprocessStatusesDiretoria();`) — nunca remover uma achando que é redundante. |
-| `WBS_DIR` é deep copy, não referência | `WBS_DIR.length=0; JSON.parse(JSON.stringify(newWBS)).forEach(e=>WBS_DIR.push(e));` — é uma cópia profunda tirada no momento do load. Edições de status manual feitas na aba Diretoria **não** propagam de volta para `WBS`, e vice-versa. Isso é intencional (permite status divergente para comparação), mas quebra a expectativa de "é a mesma árvore". |
-| `window.print()` no Comparativo | O botão "Exportar PDF" do modal Comparativo (`comp-btn-pdf`) chama `window.print()` puro — não gera PDF programaticamente, depende do diálogo de impressão do browser. Sem CSS `@media print` dedicado, o layout impresso pode não coincidir com o modal na tela. |
+| Edit tool do Claude Code falha em `index.html` | Arquivo contém backticks (template literals JS) e é grande. Usar **Python `str.replace()` via Bash** (não PowerShell) — ler o arquivo, normalizar CRLF→LF antes de comparar, aplicar substituição, converter de volta pra CRLF antes de gravar (ver `CLAUDE.md` do projeto) |
+| Colunas do cronograma MUP ≠ MAZ | A coluna H (Prioridade) desloca Status/Início/Fim de H/I/J (MAZ) para I/J/K (MUP). Ver seção 7 — `_parseWBS` já tem checagem de sanidade (`console.warn`) se o header não bater |
+| SheetJS: `dateNF` no `sheet_to_json` | Não formata como esperado com `raw:false` (datas saem tipo `4/1/26`, que `_fmtDate` não reconhece). Usar `raw:true` + `cellDates:true` e converter objetos `Date` para ISO manualmente (ver `fetchSheet`/`_xlsxDateToISO` em `index.html`) |
+| Branch protection na `main` | 1 aprovação obrigatória via PR (Code Owner `@PMO-creator`), autor não pode aprovar o próprio PR. Se você for o único colaborador, o PR fica travado até o owner ajustar `enforce_admins` ou adicionar outro revisor — ver seção 4 |
+| `exportN2PPT()` sem pptxgenjs | Gera `.html`, não `.pptx` — não há dependência de biblioteca de PPT no código atual (nome da função mantido por compatibilidade histórica) |
+| `preprocessStatusesDiretoria()` vs `preprocessStatuses()` | São duas funções separadas que processam fontes separadas (`WBS_DIR` vs `WBS`). Editar uma sem editar a outra causa divergência silenciosa entre a aba Status Report normal e a aba Diretoria. Ambas são chamadas em sequência no load — nunca remover uma achando que é redundante |
+| `WBS_DIR` é deep copy, não referência | `WBS_DIR.length=0; JSON.parse(JSON.stringify(newWBS)).forEach(e=>WBS_DIR.push(e));` — cópia profunda tirada no momento do load. Edições de status manual numa árvore não propagam para a outra. Intencional (permite status divergente para comparação) |
+| `window.print()` no Comparativo | O botão "Exportar PDF" do modal Comparativo (`comp-btn-pdf`) chama `window.print()` puro — depende do diálogo de impressão do browser, sem CSS `@media print` dedicado |
+| Nome da Área 0 | Sempre **"Pinguela"** (confirmado no header do xlsx do MUP, coluna S) — evitar variações como "Pingueira" |
 
 ---
 
@@ -505,7 +520,7 @@ Analisa `index.html` completo em busca de problemas de segurança, arquitetura, 
 Permite selecionar tarefas individuais dentro de marcos para levar à reunião de diretoria (N2), filtrar só as selecionadas e visualizar a pauta.
 
 ### Como funciona (UX)
-1. Na aba **Status Report**, expandir um grupo (ex: "#1.1 TR 01 OBRAS CIVIS") e clicar em "▸ X marcos"
+1. Na aba **Status Report**, expandir um grupo e clicar em "▸ X marcos"
 2. Expandir um marco — cada **task card** exibe um **checkbox** antes do badge de status
 3. Marcar o checkbox → badge verde **N2** aparece no tile do marco pai; botão flutuante **📋 Pauta N2 · N** mostra a contagem de tarefas
 4. Clicar **📋 Pauta N2 · N** → filtra a árvore mostrando só os marcos que têm tarefas selecionadas
@@ -536,21 +551,21 @@ Permite selecionar tarefas individuais dentro de marcos para levar à reunião d
 | FAB limpar | `id="n2-clear-fab"` — só visível quando há seleções e não está em view-only |
 | FAB publicar | `id="n2-publish-fab"` — `bottom:140px right:28px`, fundo `#1A3A8A`, só visível quando há seleções e não está em view-only |
 | FAB desbloquear | `id="n2-lock-fab"` — `bottom:24px right:28px`, fundo `#5C3A8A`, só visível em view-only |
-| **FAB exportar PPT** | `id="n2-ppt-fab"` — `bottom:200px right:28px`, fundo `#065F46`. Visível quando `n > 0 && onEap && !locked`. Chama `exportN2PPT()`. |
+| FAB exportar HTML | `id="n2-ppt-fab"` — `bottom:200px right:28px`, fundo `#065F46`. Visível quando `n > 0 && onEap && !locked`. Chama `exportN2PPT()`. |
 
 ### Exportar Pauta N2 como HTML navegável (nome da função mantido por compatibilidade)
 
-Gera `.html` com as tarefas selecionadas — não mais `.pptx` (trocado em Jul/2026, função manteve o nome antigo).
+Gera `.html` com as tarefas selecionadas.
 
 | Função | Responsabilidade |
 |---|---|
 | `exportN2PPT()` | Lê seleção via `loadN2()` (IDs no formato `gi:mi:ti:si` — 4 partes), agrupa por marco/eixo, gera HTML via `_buildN2HTMLDoc()`. Arquivo: `Pauta_N2_YYYY-MM-DD.html`. |
 
-### Compartilhamento via URL+PIN (commit 8d3268f)
+### Compartilhamento via URL+PIN
 
 Formato da URL gerada:
 ```
-https://pmo-creator.github.io/maz-dashboard/index.html?n2=ID1,ID2,...&ph=HASH
+https://pmo-creator.github.io/mup-dashboard/index.html?n2=ID1,ID2,...&ph=HASH
 ```
 > ⚠️ IDs no formato `gi:mi:ti:si` (4 partes, nível tarefa). Exemplo: `0:1:2:0` = eixo 0, grupo 1, marco 2, subtask 0.
 
@@ -584,7 +599,7 @@ Versão da aba "Status Report" (Gantt/EAP/N2) espelhada para uso da diretoria, c
 
 | Elemento | Detalhe |
 |---|---|
-| Fonte de dados | `WBS_DIR` (array separado de `WBS`) — ver [[armadilha #9]] sobre deep copy |
+| Fonte de dados | `WBS_DIR` (array separado de `WBS`) — ver armadilha na seção 9 sobre deep copy |
 | Preprocessamento | `preprocessStatusesDiretoria()` — lógica de status espelhada de `preprocessStatuses()`, mas roda sobre `WBS_DIR` |
 | Render | `renderKPIs_Dir`, `renderTree_Dir`, `buildCommentPanel_Dir`, `toggleGroup_Dir`, `toggleComment_Dir`, `toggleMarco_Dir`, `collapseAll_Dir`, `expandAllEixosEAP_Dir`, `expandAllMarcosEAP_Dir`, `expandAllTarefasEAP_Dir` |
 | Gantt | `renderGanttSectionDir`, `renderGanttForEixoDir`, `toggleGanttDir`, `setGanttModeDir`, `expandAllGanttDir`, `collapseAllGanttDir` — usa `ganttModeDir` (estado separado de `ganttMode`) |
@@ -599,4 +614,4 @@ Versão da aba "Status Report" (Gantt/EAP/N2) espelhada para uso da diretoria, c
 
 ---
 
-*Guia atualizado em 02/Jul/2026 — v17 — Dashboard MAZ 2026 · IDG PMO*
+*Guia adaptado para o MUP em 17/Jul/2026 — Dashboard MUP · IDG PMO*
