@@ -1,3 +1,11 @@
-dev/marcela @PMO-creator
-dev/joao @PMO-creator
-dev @PMO-creator
+# CODEOWNERS — mup-dashboard
+#
+# @PMO-creator é o code owner de TODOS os arquivos: todo PR pede a revisão dele.
+#
+# ⚠️ Este arquivo é apenas a definição de "quem revisa". Ele SÓ obriga a aprovação
+# quando a branch `main` estiver com PROTEÇÃO DE BRANCH + a opção
+# "Require review from Code Owners" ligada. Em repo privado de conta free o GitHub
+# NÃO permite proteção de branch — então, hoje, esta regra fica dormente.
+# Passa a valer quando o repo tiver GitHub Pro (ou for público, ou estiver numa Org).
+
+* @PMO-creator

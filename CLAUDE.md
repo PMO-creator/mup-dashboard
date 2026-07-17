@@ -43,9 +43,16 @@ mup-dashboard/                  ← PASTA ÚNICA (git repo + tudo)
 - **Caminho local do repo:** `C:\Users\gagui\GitHub\mup-dashboard`
 - **⚠️ Não usar OneDrive** — o OneDrive corrompe a pasta `.git` ao sincronizar arquivos internos do git
 - **Branches:**
-  - `main` → produção (GitHub Pages) — protegido, exige PR para merge
-  - `marcela` e `joao` → branches de trabalho pessoais; edições vão aqui e sobem via PR para `main`
+  - `main` → produção. **Sem proteção técnica** (repo privado em conta free não permite
+    proteger branch/rulesets). A proteção é por **convenção**, não travada pelo GitHub.
+  - `marcela` e `joao` → branches de trabalho pessoais.
   - (não há branch `dev` neste repo — diferente do MAZ)
+
+- **Convenção de trabalho (não há enforcement técnico — todos com Write podem empurrar em qualquer branch):**
+  1. Cada pessoa trabalha **só na sua branch** (`marcela` / `joao`).
+  2. Ninguém dá push direto na `main`. Mudanças entram via **Pull Request** revisado pelo owner.
+  3. Antes de começar o dia: `git switch <sua-branch>` e `git pull` pra sincronizar.
+  4. `main` é a fonte de verdade; branches pessoais fazem `merge`/`rebase` da `main` periodicamente.
 
 ## Regras de trabalho
 
