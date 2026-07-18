@@ -2132,7 +2132,7 @@ function abrevNome(n){
       :('<label class="ms-option ms-all-opt"><input type="checkbox" id="exp-resp-all" class="exp-opt-all" checked onchange="_expOnMsAll(\'resp\',this)"><span style="font-weight:700;font-style:italic;color:#EB8560">Todos</span></label><hr class="ms-divider">'
       +respList.map(function(r){return '<label class="ms-option"><input type="checkbox" class="exp-opt" value="'+escH(r)+'" checked onchange="_expOnMsChange(\'resp\')"><span>'+escH(r.length>35?r.substring(0,33)+'\u2026':r)+'</span></label>';}).join(''));
 
-    var GRUPO_BG='#B4DA82',MARCO_BG='#F5FAF0',TASK_BG='#F7FAFF',TASK_BORDER='#DDE8F5',TEXT_DARK='#1A2E0A';
+    var GRUPO_BG='#FACD90',MARCO_BG='#F5FAF0',TASK_BG='#F7FAFF',TASK_BORDER='#DDE8F5',TEXT_DARK='#1A2E0A';
     var NP='Não preenchido',NPA='⚠ Não preenchido';
 
     function taskCardHTML(task,grupoName,marcoName){
@@ -2196,7 +2196,7 @@ function abrevNome(n){
 
     function eixoHTML(eixoData){
       var eixo=eixoData.eixo,grupos=eixoData.grupos;
-      var bg=eixo.color||'#D96B45';
+      var bg=eixo.color||'#2D6A73';
       var txt=_eixoTextColor(eixo.color);
       var idBg=sc(eixo.status);
       var n=grupos.reduce(function(s,g){return s+g.marcos.length;},0);
@@ -2246,7 +2246,7 @@ function abrevNome(n){
       +'.exp-header .exp-sub{color:#E2E8F0;font-size:13px;margin-top:2px}'
       +'.kpi-row{display:grid;grid-template-columns:150px 1fr;gap:12px;margin-bottom:20px;align-items:stretch}'
       +'.exp-resumo{background:#FFF;border:1px solid #DDE8F5;border-left:5px solid #EB8560;border-radius:6px;margin-bottom:20px;overflow:hidden}'
-      +'.exp-resumo-head{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#B4DA82;border-bottom:1px solid #E3EDD8;flex-wrap:wrap}'
+      +'.exp-resumo-head{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#FACD90;border-bottom:1px solid #E3EDD8;flex-wrap:wrap}'
       +'.exp-resumo-title{font-weight:700;color:#1A2E0A;font-size:15px;margin-right:auto}'
       +'.exp-resumo-actions{display:flex;gap:8px;flex-wrap:wrap}'
       +'.exp-rbtn{border:1px solid #C7D9B0;background:#FFF;color:#1A2E0A;border-radius:5px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}'
@@ -2277,7 +2277,7 @@ function abrevNome(n){
       +'.exp-resumo.is-editing .exp-rbtn-read{display:none}'
       +'.exp-resumo:not(.is-editing) .exp-rbtn-edit{display:none}'
       +'@media print{.exp-resumo-actions,.exp-resumo-hint{display:none}}'
-      +'.kpi-hero{background:#B4DA82;border-radius:8px;padding:14px 10px;box-shadow:0 2px 12px rgba(0,0,0,.18);border-left:4px solid #D96B45;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}'
+      +'.kpi-hero{background:#FACD90;border-radius:8px;padding:14px 10px;box-shadow:0 2px 12px rgba(0,0,0,.18);border-left:4px solid #D96B45;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}'
       +'.kpi-hero-label{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:rgba(0,0,0,.55);margin-bottom:6px;font-weight:700}'
       +'.kpi-hero-value{font-size:36px;font-weight:800;line-height:1;color:#EB8560}'
       +'.kpi-hero-sub{font-size:11px;color:rgba(0,0,0,.5);margin-top:6px;font-weight:500;letter-spacing:.4px}'
@@ -2291,8 +2291,8 @@ function abrevNome(n){
       +'.exp-toolbar>.ms-wrap,.exp-toolbar>.expand-dd-wrap,.exp-toolbar>button{flex:1 1 0;min-width:130px;position:relative}'
       +'.exp-toolbar button{background:#20444C;color:#E2E8F0;border:1px solid #EB8560;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;width:100%;box-sizing:border-box}'
       +'.exp-toolbar button:hover{background:#EB8560}'
-      +'.exp-toolbar .ms-btn,.exp-toolbar .expand-dd-btn{background:#78B733;border-color:#78B733;color:#1A2E0A;display:flex;align-items:center;justify-content:space-between;gap:6px}'
-      +'.exp-toolbar .ms-btn:hover,.exp-toolbar .expand-dd-btn:hover{background:#689E2C;border-color:#689E2C}'
+      +'.exp-toolbar .ms-btn,.exp-toolbar .expand-dd-btn{background:#EB8560;border-color:#EB8560;color:#1A2E0A;display:flex;align-items:center;justify-content:space-between;gap:6px}'
+      +'.exp-toolbar .ms-btn:hover,.exp-toolbar .expand-dd-btn:hover{background:#D96B45;border-color:#D96B45}'
       +'.exp-eixo{margin-bottom:12px;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.3)}'
       +'.exp-eixo-header{list-style:none;cursor:pointer;padding:14px 16px;font-size:20px;font-weight:700;display:flex;align-items:center;gap:10px}'
       +'.exp-eixo-header::-webkit-details-marker{display:none}'
@@ -2536,7 +2536,7 @@ function abrevNome(n){
       +'<style>'+css+'</style></head><body><div class="exp-wrap">'
       +'<div class="exp-header">'
       +(logoData?'<img src="'+logoData+'" alt="MAZ">':'')
-      +'<div><h1><span>Reunião N2</span></h1>'
+      +'<div><h1 style="display:flex;align-items:center;gap:8px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style="width:26px;height:26px;flex-shrink:0"><rect width="32" height="32" rx="7" fill="#EF8600"/><polygon points="16,3 23,10 9,10" fill="#FFFFFF"/><rect x="7" y="11" width="18" height="2" rx="1" fill="#FFFFFF"/><g fill="#FFFFFF"><rect x="8" y="14" width="2" height="11"/><rect x="11.5" y="14" width="2" height="11"/><rect x="15" y="14" width="2" height="11"/><rect x="18.5" y="14" width="2" height="11"/><rect x="22" y="14" width="2" height="11"/></g><rect x="5" y="26" width="22" height="2" rx="1" fill="#FFFFFF"/></svg><span>Reunião N2</span></h1>'
       +'<div class="exp-sub">'+escH(subtitle)+' · '+escH(dateFull)+' · '+totalItems+' item'+(totalItems!==1?'s':'')+' selecionado'+(totalItems!==1?'s':'')+'</div></div>'
       +'</div>'
       +_n2KpiRowHTML(wbsArr)
